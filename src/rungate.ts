@@ -21,6 +21,7 @@ const getUrlAgent = (url: string) => {
 
 export class RunGate {
   private app: BareHttp<any>;
+  // TODO: move it to the external resource, eg redis or database
   private schemas: Map<string, any> = new Map();
   private runtimeSchema?: GraphQLSchema;
 
