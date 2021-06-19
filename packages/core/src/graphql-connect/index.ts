@@ -1,7 +1,4 @@
 import type { BareRequest } from 'barehttp';
-import type { IncomingMessage, ServerResponse } from 'http';
-import { URLSearchParams } from 'url';
-
 import type {
   DocumentNode,
   ValidationRule,
@@ -30,6 +27,9 @@ import {
 import type { GraphiQLOptions, GraphiQLData } from './renderGraphiQL';
 import { parseBody } from './parseBody';
 import { renderGraphiQL } from './renderGraphiQL';
+
+import { URLSearchParams } from 'url';
+import type { IncomingMessage, ServerResponse } from 'http';
 
 // `url` is always defined for IncomingMessage coming from http.Server
 type Request = IncomingMessage & { url?: string };

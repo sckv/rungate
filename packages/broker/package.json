@@ -1,0 +1,21 @@
+{
+  "name": "@rungate/broker",
+  "version": "0.0.1",
+  "description": "RunGate broker to resolve, publish and manage schema versioning",
+  "main": "index.js",
+  "author": "Konstantin Knyazev <konstantinknyazev@outlook.com>",
+  "license": "MIT",
+  "dependencies": {
+    "@graphql-inspector/core": "^2.6.1",
+    "@graphql-tools/merge": "^6.2.14",
+    "@graphql-tools/stitch": "^7.5.3",
+    "@graphql-tools/wrap": "^7.0.8",
+    "barehttp": "^0.2.1",
+    "graphql": "^15.5.0",
+    "ioredis": "^4.27.6",
+    "node-fetch": "^2.6.1"
+  },
+  "devDependencies": {
+    "@types/ioredis": "^4.26.4"
+  }
+}

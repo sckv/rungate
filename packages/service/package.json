@@ -1,0 +1,12 @@
+{
+  "name": "@rungate/service",
+  "version": "0.0.1",
+  "description": "Client Service to announce own schemas to the broker",
+  "main": "index.js",
+  "author": "Konstantin Knyazev <konstantinknyazev@outlook.com>",
+  "license": "MIT",
+  "dependencies": {
+    "@types/node-fetch": "^2.5.10",
+    "node-fetch": "^2.6.1"
+  }
+}

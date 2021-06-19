@@ -1,13 +1,13 @@
-import type { IncomingMessage } from 'http';
-import type { Inflate, Gunzip } from 'zlib';
-import zlib from 'zlib';
-import querystring from 'querystring';
-
 import getStream, { MaxBufferError } from 'get-stream';
 import httpError from 'http-errors';
 import contentType from 'content-type';
 import type { ParsedMediaType } from 'content-type';
 import { BareRequest } from 'barehttp';
+
+import querystring from 'querystring';
+import zlib from 'zlib';
+import type { Inflate, Gunzip } from 'zlib';
+import type { IncomingMessage } from 'http';
 
 type Request = IncomingMessage;
 

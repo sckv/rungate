@@ -36,9 +36,7 @@ export interface GraphiQLOptions {
 
 // Ensures string values are safe to be used within a <script> tag.
 function safeSerialize(data: string | boolean | null | undefined): string {
-  return data != null
-    ? JSON.stringify(data).replace(/\//g, '\\/')
-    : 'undefined';
+  return data != null ? JSON.stringify(data).replace(/\//g, '\\/') : 'undefined';
 }
 
 // Implemented as Babel transformation, see ../resources/load-statically-from-npm.js
@@ -51,15 +49,10 @@ declare function loadFileStaticallyFromNPM(npmPath: string): string;
  * When shown, it will be pre-populated with the result of having executed the
  * requested query.
  */
-export function renderGraphiQL(
-  data: GraphiQLData,
-  options?: GraphiQLOptions,
-): string {
+export function renderGraphiQL(data: GraphiQLData, options?: GraphiQLOptions): string {
   const queryString = data.query;
-  const variablesString =
-    data.variables != null ? JSON.stringify(data.variables, null, 2) : null;
-  const resultString =
-    data.result != null ? JSON.stringify(data.result, null, 2) : null;
+  const variablesString = data.variables != null ? JSON.stringify(data.variables, null, 2) : null;
+  const resultString = data.result != null ? JSON.stringify(data.result, null, 2) : null;
   const operationName = data.operationName;
   const defaultQuery = options?.defaultQuery;
   const headerEditorEnabled = options?.headerEditorEnabled;
@@ -74,27 +67,19 @@ export function renderGraphiQL(
         ${loadFileStaticallyFromNPM('graphql-ws/umd/graphql-ws.js')}
       </script>
       <script>
-      ${loadFileStaticallyFromNPM(
-        'subscriptions-transport-ws/browser/client.js',
-      )}
+      ${loadFileStaticallyFromNPM('subscriptions-transport-ws/browser/client.js')}
       </script>
       `;
     } else {
       subscriptionScripts = `
       <script>
-        ${loadFileStaticallyFromNPM(
-          'subscriptions-transport-ws/browser/client.js',
-        )}
+        ${loadFileStaticallyFromNPM('subscriptions-transport-ws/browser/client.js')}
       </script>
       <script>
-        ${loadFileStaticallyFromNPM(
-          'subscriptions-transport-ws/browser/client.js',
-        )}
+        ${loadFileStaticallyFromNPM('subscriptions-transport-ws/browser/client.js')}
       </script>
       <script>
-        ${loadFileStaticallyFromNPM(
-          'graphiql-subscriptions-fetcher/browser/client.js',
-        )}
+        ${loadFileStaticallyFromNPM('graphiql-subscriptions-fetcher/browser/client.js')}
       </script>
       `;
     }
@@ -212,9 +197,7 @@ add "&raw" to the end of the URL within a browser.
         let client = null;
         let url = window.location.href;
         if('${typeof websocketClient}' == 'string' && '${websocketClient}' === 'v1') {
-          client = window.graphqlWs.createClient({url: ${safeSerialize(
-            subscriptionEndpoint,
-          )} });
+          client = window.graphqlWs.createClient({url: ${safeSerialize(subscriptionEndpoint)} });
           return window.GraphiQL.createFetcher({url, wsClient: client});
         } else {
           let clientClass = window.SubscriptionsTransportWs.SubscriptionClient;
