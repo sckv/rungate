@@ -2,7 +2,15 @@ import fetch from 'node-fetch';
 
 import fs from 'fs';
 
-export const announceMySchema = async (opts: any) => {
+export const announceMySchema = async (
+  options?: Partial<{
+    hash: string;
+    name: string;
+    url: string;
+    gateway: string;
+    gatewayUrl: string;
+  }>,
+) => {
   const rev = fs.readFileSync('.git/HEAD').toString().trim();
   const getRev = () => {
     if (rev.indexOf(':') === -1) {
@@ -15,11 +23,11 @@ export const announceMySchema = async (opts: any) => {
     }
   };
 
-  const hash = process.env.SERVICE_HASH || getRev();
-  const name = process.env.SERVICE_NAME;
-  const url = process.env.SERVICE_URL;
-  const gateway = process.env.SERVICE_GATEWAY;
-  const gatewayUrl = process.env.SERVICE_GATEWAY_URL;
+  const hash = options?.hash || process.env.SERVICE_HASH || getRev();
+  const name = options?.name || process.env.SERVICE_NAME;
+  const url = options?.url || process.env.SERVICE_URL;
+  const gateway = options?.gateway || process.env.SERVICE_GATEWAY;
+  const gatewayUrl = options?.gatewayUrl || process.env.SERVICE_GATEWAY_URL;
 
   if (!name || !url || !gateway || !hash || !gatewayUrl) {
     throw new Error(
