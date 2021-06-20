@@ -1,4 +1,3 @@
-import { introspectSchema } from '@graphql-tools/wrap';
 import fetch from 'node-fetch';
 import { print, DocumentNode, GraphQLSchema, buildSchema } from 'graphql';
 import { BareHttp, BareHttpType, logMe } from 'barehttp';
@@ -6,6 +5,7 @@ import { stitchSchemas } from '@graphql-tools/stitch';
 import ioredis from 'ioredis';
 
 import { graphqlHTTP } from './graphql-connect';
+import { envs } from './envs';
 
 import http from 'http';
 import https from 'https';
@@ -27,21 +27,22 @@ export class RunGate {
   private runtimeSchema?: GraphQLSchema;
   private redis: ioredis.Redis;
   private app: BareHttpType;
-  private schemasKey: string;
+  private brokerKey: string;
 
-  constructor(private readonly gateway: string) {
-    this.schemasKey = `schema:${this.gateway}`;
-    this.app = new BareHttp({ serverPort: 3001 });
-    this.redis = ioredis(7744, 'localhost');
+  constructor(private readonly gateway: string = envs.gatewayName) {
+    this.brokerKey = `schema:${this.gateway}`;
+    this.app = new BareHttp({ serverPort: envs.gatewayPort });
+    this.redis = new ioredis({ port: envs.redisPort, host: envs.redisUrl }).on('ready', () =>
+      console.log('Redis connected'),
+    );
+
+    this.redis.config('SET', 'notify-keyspace-events', 'AKE');
+
     this.listenToRedis();
-    this.buildAtStart();
   }
 
   start(cb?: (address?: string) => void) {
-    this.stitchSchemas();
-    if (this.runtimeSchema) {
-      this.attachGraphqlRoutes();
-    }
+    this.buildAtStart();
     return this.app.start(cb);
   }
 
@@ -70,9 +71,9 @@ export class RunGate {
   }
 
   private async buildSchemaFromRedis() {
-    const rawSchemas = await this.redis.get(this.schemasKey);
+    const rawSchemas = await this.redis.get(this.brokerKey);
     if (!rawSchemas) {
-      logMe.fatal(`There are no schemas published for ${this.schemasKey}. Will retry in 5sec`);
+      logMe.fatal(`There are no schemas published for ${this.brokerKey}. Will retry in 5 sec`);
       throw new Error('No schemas to rebuild, check if broker is online');
     }
     const schemas = JSON.parse(rawSchemas) as {
@@ -90,25 +91,30 @@ export class RunGate {
     });
     this.stitchSchemas();
     logMe.info('Successfully built schema from redis');
+    return true;
   }
 
   private async buildAtStart() {
-    await this.buildSchemaFromRedis().catch((e) => {
+    const schemaUplink = await this.buildSchemaFromRedis().catch((e) => {
       logMe.error(e);
       this.retryStartup();
     });
-    this.attachGraphqlRoutes();
-    logMe.info('Successfully started with new schema');
+    if (schemaUplink) {
+      this.attachGraphqlRoutes();
+      logMe.info('Successfully started with new schema');
+    }
   }
 
   private async rebuildAndHotSwap() {
-    await this.buildSchemaFromRedis().catch((e) => {
+    const schemaUplink = await this.buildSchemaFromRedis().catch((e) => {
       logMe.error(e);
       this.retryHotSwap();
     });
 
-    this.hotSwapSchemaEndpoints();
-    logMe.info('Successfully hot swapped to the new schema');
+    if (schemaUplink) {
+      this.hotSwapSchemaEndpoints();
+      logMe.info('Successfully hot swapped to the new schema');
+    }
   }
 
   private retryStartup(time = 5000) {
@@ -126,10 +132,9 @@ export class RunGate {
   private listenToRedis() {
     const dupe = this.redis.duplicate();
     dupe.on('ready', () => {
-      dupe.config('SET', 'notify-keyspace-events', 'AKE');
       dupe.subscribe('__keyevent@0__:set');
       dupe.on('message', (_, key) => {
-        if (this.schemasKey === key) {
+        if (this.brokerKey === key) {
           this.rebuildAndHotSwap().catch((err) => {
             logMe.error('Error hot swapping new version of the schema', err);
           });

@@ -75,16 +75,6 @@ export const redisOps = (r: ioredis.Redis) => ({
       },
     );
   },
-  // getNextTriagedData: async (gateway: string) => {
-  //   const rawTriage = await r.lpop(`${rKeys.schema}:${rKeys.triage}:${gateway}`);
-  //   if (!rawTriage) return null;
-  //   return JSON.parse(rawTriage) as {
-  //     name: string;
-  //     schema: string;
-  //     url: string;
-  //     triage: boolean;
-  //   }[];
-  // },
 
   // services related
   incrHashServiceCount: (gateway: string, hash: string) => {
@@ -101,24 +91,14 @@ export const redisOps = (r: ioredis.Redis) => ({
   },
 
   // lock
-  setLockState: () => {
-    return r.setnx(`${rKeys.schema}:${rKeys.lock}`, '1');
+  setLockState: async () => {
+    const result = await r.setnx(`${rKeys.schema}:${rKeys.lock}`, '1');
+    console.log({ result });
+    if (result != 1) {
+      throw new Error('Lock not acquired');
+    }
   },
   removeLockState: () => {
     return r.del(`${rKeys.schema}:${rKeys.lock}`);
   },
-
-  // amount of services?
-  // incTriageSchemaServicesKey: (gateway: string, timestamp: number) => {
-  //   return r.incr(`${rKeys.schema}:${gateway}:${rKeys.triage}:${timestamp}:${rKeys.services}`);
-  // },
-  // decTriageSchemaServicesKey: (gateway: string, timestamp: number) => {
-  //   return r.decr(`${rKeys.schema}:${gateway}:${rKeys.triage}:${timestamp}:${rKeys.services}`);
-  // },
-  // incSchemaServicesKey: (gateway: string) => {
-  //   return r.incr(`${rKeys.schema}:${gateway}:${rKeys.services}`);
-  // },
-  // decrSchemaServicesKey: (gateway: string) => {
-  //   return r.incr(`${rKeys.schema}:${gateway}:${rKeys.services}`);
-  // },
 });

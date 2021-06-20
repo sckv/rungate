@@ -1,6 +1,6 @@
 import { RunGate } from './rungate';
 
-const app = new RunGate('main');
+const app = new RunGate();
 
 app
   .start((address) => {
