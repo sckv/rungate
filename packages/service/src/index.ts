@@ -1,0 +1,1 @@
+export { announceMySchema } from './service';
