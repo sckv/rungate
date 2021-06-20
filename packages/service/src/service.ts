@@ -14,6 +14,7 @@ const gitRev = () => {
   }
 };
 
+let graced = false;
 const attachDeregister = (call: () => any) => {
   process.on('beforeExit', () => call());
   process.on('exit', () => call());
@@ -55,18 +56,24 @@ export const announceMySchema = async (
     });
   });
 
-  const deregisterCall = () =>
+  const deregisterCall = () => {
+    if (graced) return process.exit(1);
+
     fetch(`${gatewayUrl}/deregister`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ hash, name, url, gateway }),
-    }).then((res) => {
-      if (res.ok) return res.json();
-      res.json().then((jsoned) => {
-        console.log({ errorFromGateway: jsoned });
-        throw Error(`Bad status from gateway ${res.status}`);
-      });
-    });
+    })
+      .then((res) => {
+        graced = true;
+        if (res.ok) return res.json();
+        res.json().then((jsoned) => {
+          console.log({ errorFromGateway: jsoned });
+          throw Error(`Bad status from gateway ${res.status}`);
+        });
+      })
+      .catch(() => (graced = true));
+  };
 
   attachDeregister(deregisterCall);
 };

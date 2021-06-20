@@ -7,6 +7,7 @@ import ioredis from 'ioredis';
 import { mergeSchemas } from '@graphql-tools/merge';
 
 import { redisOps } from './redisops';
+import { envs } from './envs';
 
 export class RunGateBroker {
   private runtimeSchemaStore: Map<
@@ -18,8 +19,11 @@ export class RunGateBroker {
   private app: BareHttpType;
 
   constructor() {
-    this.app = new BareHttp({ serverPort: 3001 });
-    this.redis = ioredis(7744, 'localhost');
+    this.app = new BareHttp({ serverPort: envs.brokerPort });
+    this.redis = new ioredis({
+      port: envs.redisPort,
+      host: envs.redisUrl,
+    }).on('ready', () => console.log('Redis connected!'));
     this.attachRegisterRoute();
   }
 
@@ -55,13 +59,15 @@ export class RunGateBroker {
     console.log({ remoteIp: flow.remoteIp });
     const { name, url, hash, gateway } = flow.requestBody;
 
-    const executor = this.createRemoteExecutor(url);
+    const executor = await this.createRemoteExecutor(url);
+    console.log({ executor, type: typeof executor });
     const schemaToRegister = await introspectSchema(executor as any);
 
     const schemaToRegisterString = printIntrospectionSchema(schemaToRegister);
 
     const services = await rOps.getGatewayData(gateway);
 
+    console.log({ services });
     if (!services) {
       // publish service for the gateway
       try {
@@ -165,6 +171,7 @@ export class RunGateBroker {
         await rOps.addGatewayDataOverride(gateway, newServices);
         this.runtimeSchemaStore.set(gateway, newServices);
         await rOps.incrHashServiceCount(gateway, hash);
+        await rOps.removeLockState();
       } catch (e) {
         console.log('Failed to acquire the lock over the gateway data');
         console.log({ error: e });
@@ -178,6 +185,7 @@ export class RunGateBroker {
         await rOps.addHashTriage(gateway, hash, newService);
         await rOps.setTriageParent(gateway, clientInList!.hash, hash); // clientInList should NEVER be empty, review Note #1
         await rOps.incrHashServiceCount(gateway, hash);
+        await rOps.removeLockState();
       } catch (e) {
         console.log('Failed to acquire the lock over the triage data');
         console.log({ error: e });
@@ -238,6 +246,7 @@ export class RunGateBroker {
         await rOps.setLockState();
         await rOps.addGatewayDataOverride(gateway, newServices);
         this.runtimeSchemaStore.set(gateway, newServices);
+        await rOps.removeLockState();
         console.log(
           `Service ${name} with hash ${hash} correctly substituted for new version of ${childHash}`,
         );
