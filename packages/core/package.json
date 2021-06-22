@@ -5,6 +5,21 @@
   "main": "index.js",
   "license": "MIT",
   "author": "Konstantin Knyazev <konstantinknyazev@outlook.com>",
+  "homepage": "https://github.com/sckv/gql-rungate#readme",
+  "directories": {
+    "lib": "lib",
+    "test": "__tests__"
+  },
+  "files": [
+    "lib"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sckv/gql-rungate.git"
+  },
+  "scripts": {
+    "compile": "rm -rf ./lib && tsc"
+  },
   "dependencies": {
     "@apollographql/graphql-playground-html": "^1.6.29",
     "@graphql-tools/stitch": "^7.5.3",

@@ -5,19 +5,13 @@
   "main": "index.js",
   "author": "Konstantin Knyazev <konstantinknyazev@outlook.com>",
   "license": "MIT",
-  "directories": {
-    "lib": "lib",
-    "test": "__tests__"
-  },
-  "files": [
-    "lib"
-  ],
   "scripts": {
-    "build": "rm -rf ./lib && tsc",
     "test": "jest --runInBand --coverage",
     "lint": "eslint ./src --fix",
-    "release": "semantic-release",
-    "dev": "ts-node-dev ./src/index.ts"
+    "dev": "ts-node-dev ./src/index.ts",
+    "compile": "lerna run compile",
+    "lerna-version": "lerna version --yes --allow-branch master --conventional-commits --force-git-tag -m 'chore(release): [skip ci] %v'",
+    "lerna-publish": "yarn compile && lerna publish from-git --yes --force-publish=* --no-git-reset"
   },
   "repository": {
     "type": "git",
@@ -32,7 +26,6 @@
     "eslint-plugin-jest": "^24.3.6",
     "jest": "^27.0.4",
     "lerna": "^4.0.0",
-    "semantic-release": "^17.4.4",
     "ts-jest": "^27.0.3",
     "ts-node-dev": "^1.1.6",
     "typescript": "^4.3.2"

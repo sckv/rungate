@@ -5,6 +5,21 @@
   "main": "index.js",
   "author": "Konstantin Knyazev <konstantinknyazev@outlook.com>",
   "license": "MIT",
+  "homepage": "https://github.com/sckv/gql-rungate#readme",
+  "directories": {
+    "lib": "lib",
+    "test": "__tests__"
+  },
+  "files": [
+    "lib"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sckv/gql-rungate.git"
+  },
+  "scripts": {
+    "compile": "rm -rf ./lib && tsc"
+  },
   "dependencies": {
     "@types/node-fetch": "^2.5.10",
     "lodash": "^4.17.21",
