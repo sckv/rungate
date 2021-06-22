@@ -1,0 +1,41 @@
+{
+  "name": "@rungate/gui",
+  "version": "0.0.1",
+  "description": "GUI for visualising and performing actions about the schemas published by the broker",
+  "author": "Konstantin Knyazev <konstantinknyazev@outlook.com>",
+  "homepage": "https://github.com/sckv/gql-rungate#readme",
+  "license": "MIT",
+  "main": "lib/gui.js",
+  "directories": {
+    "lib": "lib",
+    "test": "__tests__"
+  },
+  "files": [
+    "lib"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sckv/gql-rungate.git"
+  },
+  "scripts": {
+    "test": "echo \"Error: run tests from root\" && exit 1",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "bugs": {
+    "url": "https://github.com/sckv/gql-rungate/issues"
+  },
+  "dependencies": {
+    "next": "11.0.1",
+    "react": "17.0.2",
+    "react-dom": "17.0.2"
+  },
+  "devDependencies": {
+    "@types/react": "17.0.11",
+    "eslint": "7.29.0",
+    "eslint-config-next": "11.0.1",
+    "typescript": "4.3.4"
+  }
+}

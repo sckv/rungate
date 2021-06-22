@@ -7,6 +7,10 @@
   "license": "MIT",
   "dependencies": {
     "@types/node-fetch": "^2.5.10",
+    "lodash": "^4.17.21",
     "node-fetch": "^2.6.1"
+  },
+  "devDependencies": {
+    "@types/lodash": "^4.14.170"
   }
 }
