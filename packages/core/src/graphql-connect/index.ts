@@ -23,10 +23,11 @@ import {
   getOperationAST,
   specifiedRules,
 } from 'graphql';
+import { renderPlaygroundPage } from 'graphql-playground-html';
 
-import type { GraphiQLOptions, GraphiQLData } from './renderGraphiQL';
+import type { GraphiQLOptions, GraphiQLData } from './renderGraphiQL.dep';
 import { parseBody } from './parseBody';
-import { renderGraphiQL } from './renderGraphiQL';
+import { createPlaygroundOptions } from './playgound';
 
 import { URLSearchParams } from 'url';
 import type { IncomingMessage, ServerResponse } from 'http';
@@ -433,7 +434,9 @@ function respondWithGraphiQL(
     operationName: params?.operationName,
     result,
   };
-  const payload = renderGraphiQL(data, options);
+
+  const opts = createPlaygroundOptions(options);
+  const payload = renderPlaygroundPage(opts as any);
   return sendResponse(flow, 'text/html', payload);
 }
 

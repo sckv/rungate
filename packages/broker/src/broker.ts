@@ -1,7 +1,7 @@
 import { introspectSchema } from '@graphql-tools/wrap';
 import { diff, CriticalityLevel } from '@graphql-inspector/core';
 import fetch from 'node-fetch';
-import { print, DocumentNode, printIntrospectionSchema, buildSchema } from 'graphql';
+import { print, DocumentNode, printIntrospectionSchema, buildSchema, printSchema } from 'graphql';
 import { BareHttp, BareHttpType, BareRequest } from 'barehttp';
 import ioredis from 'ioredis';
 import { mergeSchemas } from '@graphql-tools/merge';
@@ -60,24 +60,25 @@ export class RunGateBroker {
     const { name, url, hash, gateway } = flow.requestBody;
 
     const executor = await this.createRemoteExecutor(url);
-    console.log({ executor, type: typeof executor });
     const schemaToRegister = await introspectSchema(executor as any);
 
-    const schemaToRegisterString = printIntrospectionSchema(schemaToRegister);
+    const schemaToRegisterString = printSchema(schemaToRegister);
 
     const services = await rOps.getGatewayData(gateway);
 
-    console.log({ services });
     if (!services) {
       // publish service for the gateway
       try {
         await rOps.setLockState();
+
         const addGatewayData = rOps.addGatewayData(gateway, [
           { name, schema: schemaToRegisterString, url, hash },
         ]);
         const addHashClient = rOps.incrHashServiceCount(gateway, hash);
         await Promise.all([addGatewayData, addHashClient]);
         this.runtimeSchemaStore.set(gateway, [{ name, schema: schemaToRegisterString, url, hash }]);
+        await rOps.removeLockState();
+        console.log(`Correctly initialized new gateway ${gateway} with first service ${name}`);
       } catch (e) {
         console.log('Failed to acquire the lock over the gateway initial data set');
         console.log({ error: e });
@@ -200,7 +201,7 @@ export class RunGateBroker {
     // TODO: to change to the remote IP?
     console.log({ remoteIp: flow.remoteIp });
 
-    const { name, hash, gateway } = flow.requestBody;
+    const { name, hash, gateway, url } = flow.requestBody;
 
     const registeredServices = await rOps.getGatewayData(gateway);
     if (!registeredServices) {
@@ -217,6 +218,7 @@ export class RunGateBroker {
     }
 
     const result = await rOps.decrHashServiceCount(gateway, hash);
+    console.log({ result });
     if (result !== -1) {
       console.warn(
         `Successfully deregistered 1 service for gateway ${gateway} with name ${name} and hash ${hash}, ${result} left active`,
@@ -225,31 +227,46 @@ export class RunGateBroker {
     }
 
     const childHash = await rOps.getTriageChild(gateway, hash);
+
+    const substitutionService = childHash
+      ? await rOps.getHashSingleTriage(gateway, childHash)
+      : null;
+
+    const newServices = !substitutionService
+      ? registeredServices.filter((s) => {
+          if (s.name === name && s.url === url) {
+            return false;
+          }
+          return true;
+        })
+      : registeredServices.map((s) => {
+          if (s.name === substitutionService.name && s.url === substitutionService.url) {
+            return substitutionService;
+          }
+          return s;
+        });
+
     if (!childHash) {
       console.error(
         `Seems ${name} service with hash ${hash} is not having a successor.\nPlease find out if it's intended.`,
       );
-      return { status: 'DE_REGISTRATION_SUCCESS', name, hash, gateway };
     }
-
-    const substitutionService = await rOps.getHashSingleTriage(gateway, childHash);
-
-    const newServices = registeredServices.map((s) => {
-      if (s.name === substitutionService.name && s.url === substitutionService.url) {
-        return substitutionService;
-      }
-      return s;
-    });
 
     const deregister = async () => {
       try {
         await rOps.setLockState();
-        await rOps.addGatewayDataOverride(gateway, newServices);
+        console.log({ newServices });
+        if (newServices.length) {
+          await rOps.addGatewayDataOverride(gateway, newServices);
+        } else {
+          await rOps.removeGatewayData(gateway);
+        }
         this.runtimeSchemaStore.set(gateway, newServices);
         await rOps.removeLockState();
-        console.log(
-          `Service ${name} with hash ${hash} correctly substituted for new version of ${childHash}`,
-        );
+        const log = newServices.length
+          ? `Service ${name} with hash ${hash} correctly substituted for new version of ${childHash}`
+          : `Service ${name} with hash ${hash} correctly wiped from the gateway ${gateway}`;
+        console.log(log);
       } catch (e) {
         console.log('Failed to acquire the lock over the gateway data');
         console.log({ error: e });

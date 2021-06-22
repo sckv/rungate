@@ -26,6 +26,9 @@ export const redisOps = (r: ioredis.Redis) => ({
     // schema:<gateway> -> services[]
     return r.set(`${rKeys.schema}:${gateway}`, JSON.stringify(services));
   },
+  removeGatewayData: (gateway: string) => {
+    return r.del(`${rKeys.schema}:${gateway}`);
+  },
   getGatewayData: async (gateway: string) => {
     const rawServices = await r.get(`${rKeys.schema}:${gateway}`);
     if (!rawServices) return null;

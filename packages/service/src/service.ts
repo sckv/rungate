@@ -1,26 +1,34 @@
 import fetch from 'node-fetch';
+import debounce from 'lodash/debounce';
 
 import fs from 'fs';
 
-const rev = fs.readFileSync('.git/HEAD').toString().trim();
 const gitRev = () => {
-  if (rev.indexOf(':') === -1) {
-    return rev;
-  } else {
-    return fs
-      .readFileSync('.git/' + rev.substring(5))
-      .toString()
-      .trim();
+  try {
+    const rev = fs.readFileSync('.git/HEAD').toString().trim();
+
+    if (rev.indexOf(':') === -1) {
+      return rev;
+    } else {
+      return fs
+        .readFileSync('.git/' + rev.substring(5))
+        .toString()
+        .trim();
+    }
+  } catch (e) {
+    console.error(e);
+    console.log(
+      'You have to have git repository initialized in the service root. Or provide a versioned hash.',
+    );
   }
 };
 
-let graced = false;
-const attachDeregister = (call: () => any) => {
-  process.on('beforeExit', () => call());
-  process.on('exit', () => call());
-  process.on('SIGINT', () => call());
-  process.on('SIGQUIT', () => call());
-  process.on('SIGTERM', () => call());
+const attachDeregister = (call: (code: any) => any) => {
+  process.on('beforeExit', (code) => call(code));
+  process.on('exit', (code) => call(code));
+  process.on('SIGINT', (code) => call(code));
+  process.on('SIGQUIT', (code) => call(code));
+  process.on('SIGTERM', (code) => call(code));
 };
 
 export const announceMySchema = async (
@@ -48,16 +56,24 @@ export const announceMySchema = async (
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ hash, name, url, gateway }),
-  }).then((res) => {
-    if (res.ok) return res.json();
-    res.json().then((jsoned) => {
-      console.log({ errorFromGateway: jsoned });
-      throw Error(`Bad status from gateway ${res.status}`);
-    });
-  });
+  })
+    .then((res) => {
+      if (res.ok) {
+        console.log(`Service ${name} registered to gateway ${gateway}`);
+        return res.json();
+      }
+      res.json().then((jsoned) => {
+        console.log({ errorFromGateway: jsoned });
+        throw Error(`Bad status from gateway ${res.status}`);
+      });
+    })
+    .catch(console.error)
+    .then(console.log);
 
-  const deregisterCall = () => {
-    if (graced) return process.exit(1);
+  let deregistered = false;
+
+  const deregisterCall = (code: any) => {
+    if (deregistered) return process.exit(code);
 
     fetch(`${gatewayUrl}/deregister`, {
       method: 'POST',
@@ -65,15 +81,21 @@ export const announceMySchema = async (
       body: JSON.stringify({ hash, name, url, gateway }),
     })
       .then((res) => {
-        graced = true;
+        deregistered = true;
         if (res.ok) return res.json();
         res.json().then((jsoned) => {
           console.log({ errorFromGateway: jsoned });
           throw Error(`Bad status from gateway ${res.status}`);
         });
       })
-      .catch(() => (graced = true));
+      .catch((e) => {
+        deregistered = true;
+        console.error(e);
+      })
+      .then(console.log);
   };
 
-  attachDeregister(deregisterCall);
+  const debounced = debounce(deregisterCall, 5);
+
+  attachDeregister(debounced);
 };

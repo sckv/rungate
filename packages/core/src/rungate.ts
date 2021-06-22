@@ -1,5 +1,13 @@
 import fetch from 'node-fetch';
-import { print, DocumentNode, GraphQLSchema, buildSchema } from 'graphql';
+import {
+  print,
+  DocumentNode,
+  GraphQLSchema,
+  buildSchema,
+  buildClientSchema,
+  buildASTSchema,
+  introspectionFromSchema,
+} from 'graphql';
 import { BareHttp, BareHttpType, logMe } from 'barehttp';
 import { stitchSchemas } from '@graphql-tools/stitch';
 import ioredis from 'ioredis';
@@ -50,7 +58,7 @@ export class RunGate {
     return this.app.stop();
   }
 
-  async createRemoteExecutor(url: string) {
+  createRemoteExecutor(url: string) {
     const agent = getUrlAgent(url);
     return async function remoteExecutor({
       document,
@@ -83,13 +91,20 @@ export class RunGate {
       url: string;
     }[];
 
-    schemas.forEach((s) => {
-      this.schemas.set(s.name, {
-        schema: buildSchema(s.schema),
-        executor: this.createRemoteExecutor(s.url),
-      });
+    // to make conversion from normal schema -> introspect -> build client non executable schema
+    // buildClientSchema(introspectionFromSchema(buildSchema(s.schema)));
+
+    const mapped = schemas.map((s) => {
+      return {
+        schema: buildClientSchema(introspectionFromSchema(buildSchema(s.schema))),
+        executor: this.createRemoteExecutor(s.url) as any,
+        batch: true,
+      };
     });
-    this.stitchSchemas();
+
+    this.runtimeSchema = stitchSchemas({
+      subschemas: mapped,
+    });
     logMe.info('Successfully built schema from redis');
     return true;
   }
@@ -140,12 +155,6 @@ export class RunGate {
           });
         }
       });
-    });
-  }
-
-  private stitchSchemas() {
-    this.runtimeSchema = stitchSchemas({
-      subschemas: [...this.schemas.values()],
     });
   }
 
