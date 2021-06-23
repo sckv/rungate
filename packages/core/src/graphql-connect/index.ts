@@ -23,10 +23,11 @@ import {
   getOperationAST,
   specifiedRules,
 } from 'graphql';
-import { renderPlaygroundPage } from 'graphql-playground-html';
+import { renderPlaygroundPage } from '@apollographql/graphql-playground-html';
 
 import type { GraphiQLOptions, GraphiQLData } from './renderGraphiQL.dep';
 import { parseBody } from './parseBody';
+import { renderGraphiQL } from './renderGraphiQL.dep';
 import { createPlaygroundOptions } from './playgound';
 
 import { URLSearchParams } from 'url';

@@ -89,7 +89,7 @@ export class RunGateBroker {
     }
 
     const isSameService = services.find(
-      ({ name: sName, url: sUrl, hash: sHash }) => sName === name && sUrl === url && sHash === hash,
+      ({ name: sName, hash: sHash }) => sName === name && sHash === hash,
     );
 
     if (isSameService) {
@@ -124,29 +124,30 @@ export class RunGateBroker {
         console.log(`Message => ${v.message}\nPath => ${v.path}\nType => ${v.type}`),
       );
     }
+    console.log('is breaking');
+
+    const clientInList = services.find(({ name: sName, url: sUrl }) => sName === name);
 
     // its a new service to add or swap
     const newService = {
       name,
       url,
       hash,
-      schema: printIntrospectionSchema(schemaToRegister),
+      schema: printSchema(schemaToRegister),
+      parent: clientInList!.hash || undefined,
     };
+    // console.log({ clientInList });
+    // const mismatchedClient = services.find(
+    //   ({ name: sName, url: sUrl }) =>
+    //     (sName === name && sUrl !== url) || (sName !== name && sUrl === url),
+    // );
 
-    const clientInList = services.find(
-      ({ name: sName, url: sUrl }) => sName === name && sUrl === url,
-    );
-    const mismatchedClient = services.find(
-      ({ name: sName, url: sUrl }) =>
-        (sName === name && sUrl !== url) || (sName !== name && sUrl === url),
-    );
-
-    if (!clientInList && mismatchedClient) {
-      console.error(
-        `Mismatched client!\nStored: ${mismatchedClient[0]} - ${mismatchedClient[1]}\nReceived: ${name} - ${url}`,
-      );
-      throw new Error(`Mismatched client, review ${name} service configuration`);
-    }
+    // if (!clientInList && mismatchedClient) {
+    //   console.error(
+    //     `Mismatched client!\nStored: ${mismatchedClient[0]} - ${mismatchedClient[1]}\nReceived: ${name} - ${url}`,
+    //   );
+    //   throw new Error(`Mismatched client, review ${name} service configuration`);
+    // }
 
     // ! Note #1 - this is a failsafe for schema breaking services
     if (!clientInList && isBreaking) {
@@ -160,7 +161,7 @@ export class RunGateBroker {
       //  case when the schema is not a breaking candidate
       const newServices = clientInList
         ? services.map((s) => {
-            if (s.name === name && s.url === url) {
+            if (s.name === name) {
               return newService;
             }
             return s;
@@ -173,6 +174,7 @@ export class RunGateBroker {
         this.runtimeSchemaStore.set(gateway, newServices);
         await rOps.incrHashServiceCount(gateway, hash);
         await rOps.removeLockState();
+        return { status: 'REGISTRATION_SUCCESS', name, url, hash, gateway }; //return that the registration went OK
       } catch (e) {
         console.log('Failed to acquire the lock over the gateway data');
         console.log({ error: e });
@@ -180,6 +182,8 @@ export class RunGateBroker {
         // TODO: solve retry problem for the locked state
       }
     } else {
+      console.log('IS BREAKING BERSION OF THE NEW SERVICE');
+
       // if the schema is breaking we have to triage breaking swapping service
       try {
         await rOps.setLockState();
@@ -187,6 +191,8 @@ export class RunGateBroker {
         await rOps.setTriageParent(gateway, clientInList!.hash, hash); // clientInList should NEVER be empty, review Note #1
         await rOps.incrHashServiceCount(gateway, hash);
         await rOps.removeLockState();
+        console.log('Added schema to the triage');
+        return { status: 'REGISTRATION_SUCCESS', name, url, hash, gateway }; //return that the registration went OK
       } catch (e) {
         console.log('Failed to acquire the lock over the triage data');
         console.log({ error: e });
@@ -212,9 +218,18 @@ export class RunGateBroker {
 
     if (!runningService) {
       console.warn(
-        `Could not find a client to deregister for gateway ${gateway} with name ${name} and hash ${hash}`,
+        `Could not find a client to deregister for gateway ${gateway} with name ${name} and hash ${hash}. Probably it's a service in triage.`,
       );
-      throw new Error('Could not find a client to deregister');
+      // throw new Error('Could not find a client to deregister');
+      const isTriagedService = await rOps.getSingleTriage(gateway, hash);
+      if (isTriagedService) {
+        if (isTriagedService.parent) {
+          await rOps.removeTriageChild(gateway, isTriagedService.parent);
+          await rOps.decrHashServiceCount(gateway, hash);
+          await rOps.deleteSingleTriage(gateway, hash);
+        }
+      }
+      return { status: 'DE_REGISTRATION_SUCCESS', name, hash, gateway };
     }
 
     const result = await rOps.decrHashServiceCount(gateway, hash);
@@ -229,7 +244,7 @@ export class RunGateBroker {
     const childHash = await rOps.getTriageChild(gateway, hash);
 
     const substitutionService = childHash
-      ? await rOps.getHashSingleTriage(gateway, childHash)
+      ? await rOps.getAndDeleteSingleTriage(gateway, childHash)
       : null;
 
     const newServices = !substitutionService

@@ -10,19 +10,15 @@ const rKeys = {
   metadata: 'm',
 };
 
+type StoredService = { hash: string; name: string; schema: string; url: string; parent?: string };
+
 export const redisOps = (r: ioredis.Redis) => ({
-  addGatewayData: (
-    gateway: string,
-    services: { hash: string; name: string; schema: string; url: string }[],
-  ) => {
+  addGatewayData: (gateway: string, services: StoredService[]) => {
     // schema:<gateway> -> services[]
     return r.setnx(`${rKeys.schema}:${gateway}`, JSON.stringify(services));
   },
 
-  addGatewayDataOverride: (
-    gateway: string,
-    services: { hash: string; name: string; schema: string; url: string }[],
-  ) => {
+  addGatewayDataOverride: (gateway: string, services: StoredService[]) => {
     // schema:<gateway> -> services[]
     return r.set(`${rKeys.schema}:${gateway}`, JSON.stringify(services));
   },
@@ -32,7 +28,7 @@ export const redisOps = (r: ioredis.Redis) => ({
   getGatewayData: async (gateway: string) => {
     const rawServices = await r.get(`${rKeys.schema}:${gateway}`);
     if (!rawServices) return null;
-    return JSON.parse(rawServices) as { hash: string; schema: string; name: string; url: string }[];
+    return JSON.parse(rawServices) as StoredService[];
   },
 
   // addTriageData: (gateway: string, hash: string) => {
@@ -50,7 +46,7 @@ export const redisOps = (r: ioredis.Redis) => ({
     // schema:triage:<gateway>:child:<parentHash> -> childHash
     return r.get(`${rKeys.schema}:${rKeys.triage}:${gateway}:${rKeys.child}:${parentHash}`);
   },
-  removeTriageParent: (gateway: string, parentHash: string) => {
+  removeTriageChild: (gateway: string, parentHash: string) => {
     // schema:triage:<gateway>:child:<parentHash>
     return r.del(`${rKeys.schema}:${rKeys.triage}:${gateway}:${rKeys.child}:${parentHash}`);
   },
@@ -62,21 +58,31 @@ export const redisOps = (r: ioredis.Redis) => ({
     // schema:triage:<gateway>:<hash> -> service
     return r.setnx(`${rKeys.schema}:${rKeys.triage}:${gateway}:${hash}`, JSON.stringify(service));
   },
-  getHashSingleTriage: (gateway: string, hash: string) => {
+  getSingleTriage: async (gateway: string, hash: string) => {
     // schema:triage:<gateway>:<hash> -> service
     const key = `${rKeys.schema}:${rKeys.triage}:${gateway}:${hash}`;
-    return new Promise<{ hash: string; name: string; schema: string; url: string }>(
-      (resolve, rej) => {
-        r.multi([
-          ['get', key],
-          ['del', key],
-        ]).exec((err, res) => {
-          if (err) rej(err);
-          if (res[0][0]) rej(err);
-          resolve(JSON.parse(res[0][1]));
-        });
-      },
-    );
+    const rawService = await r.get(key);
+    if (!rawService) return null;
+    return JSON.parse(rawService) as StoredService;
+  },
+  deleteSingleTriage: (gateway: string, hash: string) => {
+    // schema:triage:<gateway>:<hash> -> service
+    const key = `${rKeys.schema}:${rKeys.triage}:${gateway}:${hash}`;
+    return r.del(key);
+  },
+  getAndDeleteSingleTriage: (gateway: string, hash: string) => {
+    // schema:triage:<gateway>:<hash> -> service
+    const key = `${rKeys.schema}:${rKeys.triage}:${gateway}:${hash}`;
+    return new Promise<StoredService>((resolve, rej) => {
+      r.multi([
+        ['get', key],
+        ['del', key],
+      ]).exec((err, res) => {
+        if (err) rej(err);
+        if (res[0][0]) rej(err);
+        resolve(JSON.parse(res[0][1]));
+      });
+    });
   },
 
   // services related
@@ -96,7 +102,6 @@ export const redisOps = (r: ioredis.Redis) => ({
   // lock
   setLockState: async () => {
     const result = await r.setnx(`${rKeys.schema}:${rKeys.lock}`, '1');
-    console.log({ result });
     if (result != 1) {
       throw new Error('Lock not acquired');
     }
