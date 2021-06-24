@@ -1,4 +1,6 @@
-# WIP: RunGate
+# RunGate
+
+![Diagram](docs/rungate-diagram.png)
 
 A scalable graphql gateway for cloud.
 Refreshes remote schemas seamlessly without users disturbance.
