@@ -29,7 +29,6 @@
     "content-type": "^1.0.4",
     "get-stream": "^6.0.1",
     "graphql": "^15.5.0",
-    "graphql-playground-html": "^1.6.29",
     "http-errors": "^1.8.0",
     "ioredis": "^4.27.6",
     "node-fetch": "^2.6.1"

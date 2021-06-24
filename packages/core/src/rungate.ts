@@ -17,6 +17,7 @@ import { envs } from './envs';
 
 import http from 'http';
 import https from 'https';
+import { inspect } from 'util';
 
 const httpAgent = new http.Agent();
 const httpsAgent = new https.Agent();
@@ -74,9 +75,13 @@ export class RunGate {
         body: JSON.stringify({ query, variables }),
         agent,
       });
-      return fetchResult.json();
+      const res = await fetchResult.json();
+      console.log(inspect({ res }, false, 10, true));
+      return res;
     };
   }
+
+  checkToRepeat() {}
 
   private async buildSchemaFromRedis() {
     const rawSchemas = await this.redis.get(this.brokerKey);
