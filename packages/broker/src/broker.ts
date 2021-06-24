@@ -220,20 +220,18 @@ export class RunGateBroker {
       console.warn(
         `Could not find a client to deregister for gateway ${gateway} with name ${name} and hash ${hash}. Probably it's a service in triage.`,
       );
-      // throw new Error('Could not find a client to deregister');
+      await rOps.decrHashServiceCount(gateway, hash);
+      await rOps.deleteSingleTriage(gateway, hash);
+
       const isTriagedService = await rOps.getSingleTriage(gateway, hash);
-      if (isTriagedService) {
-        if (isTriagedService.parent) {
-          await rOps.removeTriageChild(gateway, isTriagedService.parent);
-          await rOps.decrHashServiceCount(gateway, hash);
-          await rOps.deleteSingleTriage(gateway, hash);
-        }
+      if (isTriagedService && isTriagedService.parent) {
+        await rOps.removeTriageChild(gateway, isTriagedService.parent);
       }
       return { status: 'DE_REGISTRATION_SUCCESS', name, hash, gateway };
     }
 
     const result = await rOps.decrHashServiceCount(gateway, hash);
-    console.log({ result });
+
     if (result !== -1) {
       console.warn(
         `Successfully deregistered 1 service for gateway ${gateway} with name ${name} and hash ${hash}, ${result} left active`,
@@ -249,13 +247,13 @@ export class RunGateBroker {
 
     const newServices = !substitutionService
       ? registeredServices.filter((s) => {
-          if (s.name === name && s.url === url) {
+          if (s.name === name) {
             return false;
           }
           return true;
         })
       : registeredServices.map((s) => {
-          if (s.name === substitutionService.name && s.url === substitutionService.url) {
+          if (s.name === substitutionService.name) {
             return substitutionService;
           }
           return s;
@@ -270,13 +268,15 @@ export class RunGateBroker {
     const deregister = async () => {
       try {
         await rOps.setLockState();
-        console.log({ newServices });
         if (newServices.length) {
           await rOps.addGatewayDataOverride(gateway, newServices);
         } else {
           await rOps.removeGatewayData(gateway);
         }
         this.runtimeSchemaStore.set(gateway, newServices);
+        if (substitutionService?.parent) {
+          await rOps.removeTriageChild(gateway, substitutionService?.parent);
+        }
         await rOps.removeLockState();
         const log = newServices.length
           ? `Service ${name} with hash ${hash} correctly substituted for new version of ${childHash}`
