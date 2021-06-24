@@ -3,7 +3,8 @@
 ![Diagram](docs/rungate-diagram.png)
 
 A scalable graphql gateway for cloud.
-Refreshes remote schemas seamlessly without users disturbance.
+Refreshes remote schemas seamlessly without users disturbance. 
+Fault tolerant, distributed, brokers and gateways can be scaled horizontally natively.
 
 # Structure
 
