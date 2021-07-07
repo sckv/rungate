@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    "declaration": true,
+    "downlevelIteration": true,
+    "moduleResolution": "node",
+    "module": "commonjs",
+    "target": "es2020",
+    "lib": [
+      "es2015",
+      "es2016",
+      "es2017",
+      "es2018",
+      "es2019",
+      "es2020",
+      "esnext"
+    ],
+    "strict": true,
+    "allowJs": true,
+    "esModuleInterop": true,
+    "stripInternal": true,
+    "allowSyntheticDefaultImports": true,
+    "alwaysStrict": true,
+    "noImplicitAny": false,
+    "newLine": "LF",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
+  },
+  "exclude": [
+    "../node_modules",
+    "**/__tests__/**"
+  ]
+}
