@@ -1,13 +1,5 @@
 import fetch from 'node-fetch';
-import {
-  print,
-  DocumentNode,
-  GraphQLSchema,
-  buildSchema,
-  buildClientSchema,
-  buildASTSchema,
-  introspectionFromSchema,
-} from 'graphql';
+import { print, DocumentNode, GraphQLSchema, buildSchema } from 'graphql';
 import { BareHttp, BareHttpType, logMe } from 'barehttp';
 import { stitchSchemas } from '@graphql-tools/stitch';
 import ioredis from 'ioredis';
@@ -32,7 +24,7 @@ const getUrlAgent = (url: string) => {
 };
 
 export class RunGate {
-  private schemas: Map<string, { schema: GraphQLSchema; executor: any }> = new Map();
+  private schemas: { schema: GraphQLSchema; executor: any }[] = [];
   private runtimeSchema?: GraphQLSchema;
   private redis: ioredis.Redis;
   private app: BareHttpType;
@@ -89,6 +81,7 @@ export class RunGate {
       logMe.fatal(`There are no schemas published for ${this.brokerKey}. Will retry in 5 sec`);
       throw new Error('No schemas to rebuild, check if broker is online');
     }
+
     const schemas = JSON.parse(rawSchemas) as {
       hash: string;
       name: string;
@@ -99,16 +92,15 @@ export class RunGate {
     // to make conversion from normal schema -> introspect -> build client non executable schema
     // buildClientSchema(introspectionFromSchema(buildSchema(s.schema)));
 
-    const mapped = schemas.map((s) => {
+    this.schemas = schemas.map((s) => {
       return {
-        schema: buildClientSchema(introspectionFromSchema(buildSchema(s.schema))),
+        schema: buildSchema(s.schema),
         executor: this.createRemoteExecutor(s.url) as any,
-        batch: true,
       };
     });
 
     this.runtimeSchema = stitchSchemas({
-      subschemas: mapped,
+      subschemas: this.schemas,
     });
     logMe.info('Successfully built schema from redis');
     return true;
