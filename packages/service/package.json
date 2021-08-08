@@ -18,7 +18,9 @@
     "url": "git+https://github.com/sckv/gql-rungate.git"
   },
   "scripts": {
-    "compile": "rm -rf ./lib && tsc"
+    "compile": "rm -rf ./lib && tsc",
+    "build": "npm run compile",
+    "start": "node ./lib"
   },
   "dependencies": {
     "@types/node-fetch": "^2.5.10",

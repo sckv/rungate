@@ -7,9 +7,8 @@
   "license": "MIT",
   "scripts": {
     "test": "jest --runInBand --coverage --passWithNoTests",
-    "lint": "eslint ./src --fix",
-    "dev": "ts-node-dev ./src/index.ts",
     "compile": "lerna run compile",
+    "build": "lerna run build",
     "lerna-version": "lerna version --yes --allow-branch master --conventional-commits --force-git-tag -m 'chore(release): [skip ci] %v'",
     "lerna-publish": "yarn compile && lerna publish from-git --yes --force-publish=* --no-git-reset"
   },
